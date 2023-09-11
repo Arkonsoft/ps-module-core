@@ -16,7 +16,7 @@
 
 declare(strict_types=1);
 
-namespace Arkonsoft\PrestaShop\Core\Module;
+namespace Arkonsoft\PsModule\Core\Module;
 
 use Db;
 use DbQuery;

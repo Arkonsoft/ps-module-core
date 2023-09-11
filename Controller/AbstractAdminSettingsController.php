@@ -16,7 +16,7 @@
 
 declare(strict_types=1);
 
-namespace Arkonsoft\PrestaShop\Core\Controller;
+namespace Arkonsoft\PsModule\Core\Controller;
 
 use Configuration;
 use Context;
