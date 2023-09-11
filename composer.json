@@ -1,0 +1,18 @@
+{
+    "name": "arkonsoft/ps-module-core",
+    "description": "Core utilities for PrestaShop module",
+    "authors": [
+        {
+            "name": "Arkonsoft",
+            "email": "info@arkonsoft.pl"
+        }
+    ],
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "Arkonsoft\\PrestaShop\\Core": ""
+        }
+    }
+
+
+}
