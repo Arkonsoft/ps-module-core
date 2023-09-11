@@ -1,5 +1,5 @@
 {
-    "name": "arkonsoft/ps-module/core",
+    "name": "arkonsoft/ps-module-core",
     "description": "Core utilities for PrestaShop module",
     "type": "library",
     "license": "MIT",
