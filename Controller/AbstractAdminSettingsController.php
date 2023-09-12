@@ -102,10 +102,10 @@ abstract class AbstractAdminSettingsController extends ModuleAdminController
 
                 if (!empty($field['lang'])) {
                     foreach (Language::getLanguages(true, false, true) as $id_lang) {
-                        $helper->fields_value[$key][$id_lang] = $this->loadField($key, $id_lang, !empty($field['multiple']));
+                        $helper->fields_value[$key][$id_lang] = $this->loadField((string) $key, (int) $id_lang, !empty($field['multiple']));
                     }
                 } else {
-                    $helper->fields_value[$key] = $this->loadField($key, 0, !empty($field['multiple']));
+                    $helper->fields_value[$key] = $this->loadField((string) $key, 0, !empty($field['multiple']));
                 }
             }
         }
