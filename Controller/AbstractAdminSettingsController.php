@@ -169,6 +169,10 @@ abstract class AbstractAdminSettingsController extends ModuleAdminController
         $value = Configuration::get($name, $id_lang);
 
         if ($multiple) {
+            if (empty($value)) {
+                return [];
+            }
+
             $value = explode(',', $value);
         }
 
