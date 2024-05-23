@@ -36,6 +36,8 @@ class MyModule extends AbstractModule
     public function __construct()
     {
         $this->name = 'mymodule';
+
+        // ps-module-core
         $this->tab = ModuleCategory::FRONT_OFFICE_FEATURES;
         $this->version = '1.0.0';
         $this->author = 'Firstname Lastname';
@@ -53,6 +55,7 @@ class MyModule extends AbstractModule
 
         $this->confirmUninstall = $this->trans('Are you sure you want to uninstall?', [], 'Modules.Mymodule.Admin');
 
+        // ps-module-core
         if ($this->canBeUpgraded()) {
             $this->warning = $this->trans('The module %s needs to be updated. Use the "update" option in the list of modules. The module without an update may not work properly.', [ $this->name ], 'Modules.Mymodule.Admin');
         }
