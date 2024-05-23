@@ -34,7 +34,8 @@ class AbstractModule extends Module
     }
 
     /**
-     * @return string|null
+     * Returns the database version of the module
+     * @return ?string
      */
     protected function getDatabaseVersion()
     {
@@ -52,6 +53,12 @@ class AbstractModule extends Module
         return $result;
     }
 
+    /**
+     * Checks if the database version is lower than the specified version
+     * for potential upgrade.
+     * 
+     * @return bool
+     */
     protected function canBeUpgraded(): bool
     {
         $dbVersion = $this->getDatabaseVersion();
