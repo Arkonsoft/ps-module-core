@@ -249,6 +249,7 @@ public function installTab(): bool
         // other code
     }
 ```
+---
 
 ### AbstractAdminSettingsController Class
 
