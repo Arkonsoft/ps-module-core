@@ -10,7 +10,7 @@
  * You must not modify, adapt or create derivative works of this source code
  *
  * @author Arkonsoft
- * @copyright 2023 Arkonsoft
+ * @copyright 2024 Arkonsoft
  */
 
 declare(strict_types=1);
