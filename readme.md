@@ -213,7 +213,42 @@ public function __construct()
     }
 ```
 
+### TabDictionary Interface
+
+The TabDictionary interface contains constants that represent various tabs in the PrestaShop admin panel. Each constant is a string that corresponds to an admin section.
+
+#### Constants
+Example Constants
+
+- `ACCESS`: Represents the "AdminAccess" tab.
+- `ADDONS_CATALOG`: Represents the "AdminAddonsCatalog" tab.
+- `ADDRESSES`: Represents the "AdminAddresses" tab.
+- `ADVANCED_PARAMETERS`: Represents the "AdminAdvancedParameters" tab.
+- `ATTACHMENTS`: Represents the "AdminAttachments" tab.
+- `ATTRIBUTES_GROUPS`: Represents the "AdminAttributesGroups" tab.
+- `BACKUP`: Represents the "AdminBackup" tab.
+- `CARRIERS`: Represents the "AdminCarriers" tab.
+- `CART_RULES`: Represents the "AdminCartRules" tab.
+- `CARTS`: Represents the "AdminCarts" tab.
+- `CATALOG`: Represents the "AdminCatalog" tab.
+- `CATEGORIES`: Represents the "AdminCategories" tab.
 ---
+
+Example usage:
+```php
+public function installTab(): bool
+    {
+        if (Tab::getIdFromClassName($this->settingsAdminController)) {
+            return true;
+        }
+
+        $tab = new Tab();
+
+        $parentTabClassName = TabDictionary::CATALOG;
+
+        // other code
+    }
+```
 
 ### AbstractAdminSettingsController Class
 
