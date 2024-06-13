@@ -15,7 +15,7 @@
 
 declare(strict_types=1);
 
-namespace Arkonsoft\PsModule\Core\Module;
+namespace Arkonsoft\PsModule\Core\Tab;
 
 if(!defined('_PS_VERSION_')) {
     exit;
