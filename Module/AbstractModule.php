@@ -42,7 +42,7 @@ class AbstractModule extends Module
         $query = new DbQuery();
         $query->select('version');
         $query->from('module');
-        $query->where('name = "' . $this->name . '"');
+        $query->where('name = "' . pSQL($this->name) . '"');
 
         $result = Db::getInstance()->getValue($query);
 
