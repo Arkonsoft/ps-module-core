@@ -65,6 +65,7 @@ abstract class AbstractAdminSettingsController extends ModuleAdminController
     {
         if (Tools::isSubmit('submitOptions')) {
             $this->saveForm();
+            Configuration::loadConfiguration();
 
             return;
         }
