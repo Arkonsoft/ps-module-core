@@ -122,6 +122,138 @@ class AdminMyModuleSettingsController extends AbstractAdminSettingsController
 
 ```
 
+### AbstractAdminObjectModelController Class
+
+The `AbstractAdminObjectModelController` class extends the PrestaShop `ModuleAdminController` class and provides a streamlined way to create admin controllers for ObjectModel-based entities.
+
+#### Abstract Methods
+
+```php
+/**
+ * Returns the fully qualified class name of the ObjectModel
+ * 
+ * @return string
+ */
+abstract public function getObjectModelClassName(): string;
+
+/**
+ * Determines if a shop context is required for this controller
+ * 
+ * @return bool
+ */
+abstract public function isShopContextRequired(): bool;
+
+/**
+ * Defines the columns to display in the list view
+ * 
+ * @return array
+ */
+abstract public function getListColumns(): array;
+
+/**
+ * Defines the form fields for creating/editing objects
+ * 
+ * @return array
+ */
+abstract public function getFormFields(): array;
+```
+
+#### Example Usage
+
+```php
+<?php
+
+use Arkonsoft\PsModule\Core\Controller\AbstractAdminObjectModelController;
+
+if (!defined('_PS_VERSION_')) {
+    exit;
+}
+
+class AdminMyModuleItemsController extends AbstractAdminObjectModelController
+{
+    public function getObjectModelClassName(): string
+    {
+        return MyModuleItem::class;
+    }
+
+    public function isShopContextRequired(): bool
+    {
+        return true;
+    }
+
+    public function getListColumns(): array
+    {
+        return [
+            'id_my_module_item' => [
+                'title' => $this->module->getTranslator()->trans('ID', [], 'Modules.MyModule.Admin'),
+                'width' => 'auto',
+                'type' => 'text',
+            ],
+            'name' => [
+                'title' => $this->module->getTranslator()->trans('Name', [], 'Modules.MyModule.Admin'),
+                'width' => 'auto',
+                'type' => 'text',
+            ],
+            'position' => [
+                'title' => $this->module->getTranslator()->trans('Position', [], 'Modules.MyModule.Admin'),
+                'width' => 'auto',
+                'position' => 'position',
+                'align' => 'center',
+            ],
+        ];
+    }
+
+    public function getFormFields(): array
+    {
+        return [
+            'legend' => [
+                'title' => $this->module->getTranslator()->trans('Item', [], 'Modules.MyModule.Admin'),
+            ],
+            'input' => [
+                [
+                    'type' => 'text',
+                    'label' => $this->module->getTranslator()->trans('Name', [], 'Modules.MyModule.Admin'),
+                    'name' => 'name',
+                    'required' => true,
+                    'lang' => true,
+                ],
+                [
+                    'type' => 'switch',
+                    'label' => $this->module->getTranslator()->trans('Active', [], 'Modules.MyModule.Admin'),
+                    'name' => 'active',
+                    'required' => false,
+                    'is_bool' => true,
+                    'values' => [
+                        [
+                            'id' => 'active_on',
+                            'value' => 1,
+                            'label' => $this->module->getTranslator()->trans('Yes', [], 'Modules.MyModule.Admin'),
+                        ],
+                        [
+                            'id' => 'active_off',
+                            'value' => 0,
+                            'label' => $this->module->getTranslator()->trans('No', [], 'Modules.MyModule.Admin'),
+                        ],
+                    ],
+                ],
+            ],
+            'submit' => [
+                'title' => $this->module->getTranslator()->trans('Save', [], 'Modules.MyModule.Admin'),
+            ],
+        ];
+    }
+}
+```
+
+The `AbstractAdminObjectModelController` provides the following features:
+
+- Automatic handling of position management with drag-and-drop functionality
+- Shop context validation for multistore setups
+- Automatic setup of list and form views based on your configuration
+- Built-in CRUD operations for your ObjectModel entities
+
+This controller is particularly useful when you need to create admin interfaces for custom database tables that follow PrestaShop's ObjectModel pattern.
+
 --- 
 
 ## Definitions
