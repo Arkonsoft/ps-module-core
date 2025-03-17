@@ -19,29 +19,22 @@ declare(strict_types=1);
 namespace Arkonsoft\PsModule\Core\Controller;
 
 use Configuration;
-use Context;
 use HelperForm;
 use Language;
-use ModuleAdminController;
 use Tools;
 
 if (!defined('_PS_VERSION_')) {
     exit;
 }
 
-abstract class AbstractAdminSettingsController extends ModuleAdminController
+abstract class AbstractAdminSettingsController extends AbstractAdminController
 {
-
     protected $forms = [];
 
     abstract public function prepareOptions();
 
     public function __construct()
     {
-        $this->context = Context::getContext();
-        $this->context->controller = $this;
-        $this->bootstrap = true;
-
         parent::__construct();
 
         $this->prepareOptions();
@@ -74,12 +67,58 @@ abstract class AbstractAdminSettingsController extends ModuleAdminController
     public function renderForm()
     {
         $helper = new HelperForm();
-        $helper->default_form_language = $this->context->language->id;
         $helper->submit_action = 'submitOptions';
-        $helper->languages = $this->context->controller->getLanguages();
+
+        $helper->languages = $this->getHelperFormLanguages();
+        $helper->default_form_language = $this->getHelperFormDefaultLanguageId();
+
         $helper = $this->loadFormValues($helper);
 
         return $helper->generateForm($this->forms);
+    }
+
+    protected function getHelperFormLanguages()
+    {
+        $languages = array_values(Language::getLanguages(true, $this->context->shop->id));
+
+        if (empty($languages)) {
+            return [];
+        }
+
+        $defaultLanguageId = (int) Configuration::get('PS_LANG_DEFAULT', null, null, $this->context->shop->id);
+        $hasDefault = false;
+        
+        foreach ($languages as &$language) {
+            if ($language['id_lang'] == $defaultLanguageId) {
+                $language['is_default'] = true;
+                $hasDefault = true;
+            } elseif (isset($language['is_default']) && $language['is_default']) {
+                $hasDefault = true;
+            }
+        }
+        
+        if (!$hasDefault && !empty($languages)) {
+            $languages[0]['is_default'] = true;
+        }
+
+        return $languages;
+    }
+
+    protected function getHelperFormDefaultLanguageId()
+    {
+        $languages = $this->getHelperFormLanguages();
+
+        if(empty($languages)) {
+            return 0;
+        }
+
+        foreach ($languages as $language) {
+            if (isset($language['is_default']) && $language['is_default']) {
+                return $language['id_lang'];
+            }
+        }
+
+        return 0;
     }
 
     public function loadFormValues(HelperForm $helper)
@@ -167,7 +206,7 @@ abstract class AbstractAdminSettingsController extends ModuleAdminController
             $name = str_replace('[]', '', $name);
         }
 
-        $value = Configuration::get($name, $id_lang);
+        $value = Configuration::get($name, $id_lang, null, $this->context->shop->id);
 
         if ($multiple) {
             if (empty($value)) {
@@ -186,7 +225,7 @@ abstract class AbstractAdminSettingsController extends ModuleAdminController
             return false;
         }
 
-        $values = Configuration::get($name, null, null, null, '');
+        $values = Configuration::get($name, null, null, $this->context->shop->id, '');
 
         $values = explode(',', $values);
 
@@ -213,7 +252,7 @@ abstract class AbstractAdminSettingsController extends ModuleAdminController
             }
         }
 
-        return Configuration::updateValue($name, $value, $html);
+        return Configuration::updateValue($name, $value, $html, null, $this->context->shop->id);
     }
 
     protected function saveLangField(string $name, bool $html = false, bool $multiple = false)
@@ -240,7 +279,7 @@ abstract class AbstractAdminSettingsController extends ModuleAdminController
             $values[$id_lang] = $value;
         }
 
-        return Configuration::updateValue($name, $values, $html);
+        return Configuration::updateValue($name, $values, $html, null, $this->context->shop->id);
     }
 
     public function saveCategoryField(string $name)
@@ -261,7 +300,7 @@ abstract class AbstractAdminSettingsController extends ModuleAdminController
 
         $values = implode(',', $values);
 
-        return Configuration::updateValue($name, $values);
+        return Configuration::updateValue($name, $values, false, null, $this->context->shop->id);
     }
 
 
