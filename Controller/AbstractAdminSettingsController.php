@@ -209,7 +209,7 @@ abstract class AbstractAdminSettingsController extends AbstractAdminController
         $value = Configuration::get($name, $id_lang, null, $this->context->shop->id);
 
         if ($multiple) {
-            if (empty($value)) {
+            if (empty($value) || !is_string($value)) {
                 return [];
             }
 
@@ -227,9 +227,11 @@ abstract class AbstractAdminSettingsController extends AbstractAdminController
 
         $values = Configuration::get($name, null, null, $this->context->shop->id, '');
 
-        $values = explode(',', $values);
+        if (empty($values) || !is_string($values)) {
+            return false;
+        }
 
-        return $values;
+        return  explode(',', $values);
     }
 
     protected function saveField(string $name, bool $html = false, bool $multiple = false)
