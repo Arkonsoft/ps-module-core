@@ -86,8 +86,13 @@ abstract class AbstractAdminObjectModelController extends AbstractAdminControlle
     protected function isMultilang(): bool
     {
         $reflection = new \ReflectionClass($this->getObjectModelClassName());
-
-        return (bool) $reflection->getStaticPropertyValue('definition')['multilang'];
+        
+        try {
+            $definition = $reflection->getStaticPropertyValue('definition');
+            return isset($definition['multilang']) ? (bool) $definition['multilang'] : false;
+        } catch (\ReflectionException $e) {
+            return false;
+        }
     }
 
     protected function getCurrentIdentifier(): int
