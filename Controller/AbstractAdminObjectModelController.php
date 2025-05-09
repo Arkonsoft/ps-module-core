@@ -57,6 +57,13 @@ abstract class AbstractAdminObjectModelController extends AbstractAdminControlle
         parent::initContent();
     }
 
+    public function postProcess()
+    {
+        parent::postProcess();
+
+        $this->processImagesDelete();
+    }
+
     protected function setupListActions()
     {
         $this->addRowAction('edit');
