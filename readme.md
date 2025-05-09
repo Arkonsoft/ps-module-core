@@ -4,6 +4,27 @@
 
 Creating modules for Presta is a real horror story. This package contains basic tools to make development a little less masochistic.
 
+## Table of Contents
+
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Basic Usage](#basic-usage)
+  - [AbstractModule](#abstractmodule)
+  - [AbstractAdminSettingsController](#abstractadminsettingscontroller)
+  - [AbstractAdminObjectModelController](#abstractadminobjectmodelcontroller-class)
+    - [Abstract Methods](#abstract-methods)
+    - [Example Usage](#example-usage)
+    - [Features](#features)
+    - [Image Management](#image-management)
+    - [Multishop Support](#multishop-support)
+    - [Multilang Support](#multilang-support)
+    - [Position Management](#position-management)
+- [Definitions](#definitions)
+  - [AbstractModule Class](#abstractmodule-class)
+  - [ModuleCategory Interface](#modulecategory-interface)
+  - [TabDictionary Interface](#tabdictionary-interface)
+  - [AbstractAdminSettingsController Class](#abstractadminsettingscontroller-class-1)
+
 ## Requirements
 
 - PHP >= 7.0
@@ -248,11 +269,103 @@ class AdminMyModuleItemsController extends AbstractAdminObjectModelController
 The `AbstractAdminObjectModelController` provides the following features:
 
 - Automatic handling of position management with drag-and-drop functionality
-- Shop context validation for multistore setups
-- Automatic setup of list and form views based on your configuration
-- Built-in CRUD operations for your ObjectModel entities
+- Built-in image management support through `ObjectModelImageManager`
+- Automatic multishop support with proper JOIN handling
+- Automatic multilang support detection and handling
+- Built-in image preview and deletion functionality
 
-This controller is particularly useful when you need to create admin interfaces for custom database tables that follow PrestaShop's ObjectModel pattern.
+#### Image Management
+
+The controller includes built-in support for image management through the `ObjectModelImageManager`. You can use the following methods in your form fields:
+
+```php
+protected function getImagePreviewHtml(string $type, string $extension, string $widthInPx = '200px'): string
+```
+
+This method generates HTML for image preview in your forms. Example usage in form fields:
+
+```php
+[
+    'type' => 'file',
+    'label' => $this->module->getTranslator()->trans('Image', [], 'Modules.MyModule.Admin'),
+    'name' => 'image',
+    'display_image' => true,
+    'image' => $this->getImagePreviewHtml('default', 'jpg'),
+    'delete_url' => $this->getDeleteImageUrl('default'),
+]
+```
+
+To handle image saving in your controller, you can use the `processImagesSave` method. Here's an example of how to implement it:
+
+```php
+private function processImagesSave(): void
+{
+    if (!\Tools::isSubmit('submitAdd' . $this->table)) {
+        return;
+    }
+
+    $object = $this->loadObject();
+
+    if (!$object) {
+        return;
+    }
+
+    $id = (int) $object->id;
+
+    // Save desktop image with jpg and webp formats
+    $this->objectModelImageManager->saveImage('image', $id, 'default', ['jpg', 'webp']);
+}
+```
+
+This method should be called in your controller's `postProcess` method to handle image uploads when the form is submitted. The `saveImage` method takes the following parameters:
+- Field name from the form
+- Object ID
+- Image type identifier
+- Array of allowed file extensions
+
+To integrate image saving in your controller, override the `postProcess` method like this:
+
+```php
+public function postProcess()
+{
+    parent::postProcess();
+
+    $this->processImagesSave();
+}
+```
+
+#### Multishop Support
+
+The controller automatically handles multishop functionality. It will:
+- Detect if multishop is active
+- Add appropriate JOIN clauses for shop context
+- Handle shop-specific data properly
+
+#### Multilang Support
+
+The controller automatically detects if your ObjectModel supports multiple languages by checking the model's definition. This is used to:
+- Set proper language flags in forms
+- Handle multilang fields correctly
+- Manage translations appropriately
+
+#### Position Management
+
+The controller provides built-in support for position management with:
+- Drag-and-drop reordering
+- Automatic position updates
+- Position field in list view
+- AJAX-based position updates
+
+Example of position field in list columns:
+
+```php
+'position' => [
+    'title' => $this->module->getTranslator()->trans('Position', [], 'Modules.MyModule.Admin'),
+    'width' => 'auto',
+    'position' => 'position',
+    'align' => 'center',
+]
+```
 
 --- 
 

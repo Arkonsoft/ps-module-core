@@ -18,8 +18,15 @@ declare(strict_types=1);
 
 namespace Arkonsoft\PsModule\Core\Controller;
 
+use Arkonsoft\PsModule\Core\ObjectModel\ObjectModelImageManager;
+
 abstract class AbstractAdminObjectModelController extends AbstractAdminController
 {
+    /**
+     * @var ObjectModelImageManager
+     */
+    public $objectModelImageManager;
+
     abstract public function getObjectModelClassName(): string;
 
     abstract public function getListColumns(): array;
@@ -34,6 +41,10 @@ abstract class AbstractAdminObjectModelController extends AbstractAdminControlle
         $this->table = $this->getTable();
         $this->identifier = $this->getIdentifier();
         $this->lang = $this->isMultilang();
+
+        $this->objectModelImageManager = new ObjectModelImageManager(
+            $this->module->name,
+        );
 
         $this->setupMultishop();
     }
@@ -203,6 +214,7 @@ abstract class AbstractAdminObjectModelController extends AbstractAdminControlle
         );
     }
 
+    
     private function getObjectModelClassNameInSnakeCase(): string
     {
         $reflection = new \ReflectionClass($this->getObjectModelClassName());
@@ -211,4 +223,45 @@ abstract class AbstractAdminObjectModelController extends AbstractAdminControlle
 
         return strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $className));
     }
+
+    protected function getImagePreviewHtml(string $type, string $extension, string $widthInPx = '200px'): string
+    {
+        if(!\Validate::isLoadedObject($this->object)) {
+            return '';
+        }
+
+        return $this->objectModelImageManager->getThumbnailHtml((int) $this->object->id, $type, $extension, $widthInPx);
+    }
+
+    protected function getDeleteImageUrl(string $type): string|false
+    {
+        if(!\Validate::isLoadedObject($this->object)) {
+            return '';
+        }
+
+        return $this->context->link->getAdminLink(\Tools::getValue('controller')) . '&' . $this->identifier . '=' . $this->object->id . '&deleteObjectImage=1&type=' . $type;
+    }
+
+    protected function processImagesDelete(): void
+    {
+        if (!\Tools::isSubmit('deleteObjectImage')) {
+            return;
+        }
+
+        $type = \Tools::getValue('type');
+
+        $object = $this->loadObject();
+
+        if (!$object) {
+            return;
+        }
+
+        $id = (int) $object->id;
+
+        $this->objectModelImageManager->deleteImage($id, $type);
+
+        // Redirect back to the edit page after deletion
+        \Tools::redirectAdmin($this->context->link->getAdminLink(\Tools::getValue('controller')) . '&' . $this->identifier . '=' . $id . '&update' . $this->table);
+    }
+
 }
