@@ -89,9 +89,11 @@ class ObjectModelImageManager
      * @param int $objectId ID of the object the image belongs to
      * @param string $type Type of the image
      * @param array $extensions List of output formats to generate
+     * @param int|null $width Width of the image
+     * @param int|null $height Height of the image
      * @throws ImageManagerException
      */
-    public function saveImage($fieldName, $objectId, $type, array $extensions)
+    public function saveImage($fieldName, $objectId, $type, array $extensions, $width = null, $height = null)
     {
         if (!$this->isFileUploaded($fieldName)) {
             return;
@@ -102,7 +104,7 @@ class ObjectModelImageManager
 
         foreach ($extensions as $extension) {
             $this->validateOutputExtension($extension);
-            $this->saveImageInFormat($fieldName, $objectId, $type, $extension);
+            $this->saveImageInFormat($fieldName, $objectId, $type, $extension, $width, $height);
         }
     }
 
@@ -240,18 +242,31 @@ class ObjectModelImageManager
      * @param int $objectId ID of the object the image belongs to
      * @param string $type Type of the image
      * @param string $extension Output format extension
+     * @param int|null $width Width of the image
+     * @param int|null $height Height of the image
      * @throws ImageManagerException When image upload fails
      */
-    protected function saveImageInFormat($fieldName, $objectId, $type, $extension)
+    protected function saveImageInFormat($fieldName, $objectId, $type, $extension, $width = null, $height = null)
     {
         $filename = $this->generateFilename($objectId, $type, $extension);
         $destination = $this->getImageDestinationDir() . $filename;
 
+        // Get image dimensions from the temporary file
+        list($originalWidth, $originalHeight) = getimagesize($_FILES[$fieldName]['tmp_name']);
+
+        if($width !== null && (int) $originalWidth < (int) $width) {
+            $width = $originalWidth;
+        }
+
+        if($height !== null && (int) $originalHeight < (int) $height) {
+            $height = $originalHeight;
+        }
+
         $uploadResult = \ImageManager::resize(
             $_FILES[$fieldName]['tmp_name'],
             $destination,
-            null,
-            null,
+            $width,
+            $height,
             $extension,
             true
         );
