@@ -254,12 +254,26 @@ class ObjectModelImageManager
         // Get image dimensions from the temporary file
         list($originalWidth, $originalHeight) = getimagesize($_FILES[$fieldName]['tmp_name']);
 
-        if($width !== null && (int) $originalWidth < (int) $width) {
-            $width = $originalWidth;
+        // Calculate missing dimension if only one is provided
+        if ($width !== null && $height === null) {
+            $height = $this->calculateProportionalHeight($originalWidth, $originalHeight, $width);
+        } elseif ($height !== null && $width === null) {
+            $width = $this->calculateProportionalWidth($originalWidth, $originalHeight, $height);
         }
 
-        if($height !== null && (int) $originalHeight < (int) $height) {
+        // Prevent image upscaling
+        if ($width !== null && $originalWidth < $width) {
+            $width = $originalWidth;
+            if ($height !== null) {
+                $height = $this->calculateProportionalHeight($originalWidth, $originalHeight, $width);
+            }
+        }
+
+        if ($height !== null && $originalHeight < $height) {
             $height = $originalHeight;
+            if ($width !== null) {
+                $width = $this->calculateProportionalWidth($originalWidth, $originalHeight, $height);
+            }
         }
 
         $uploadResult = \ImageManager::resize(
@@ -275,6 +289,33 @@ class ObjectModelImageManager
             throw new ImageManagerException('An error occurred while uploading the image');
         }
     }
+
+    /**
+     * Calculates the proportional height for an image
+     * 
+     * @param int $originalWidth Original width of the image
+     * @param int $originalHeight Original height of the image
+     * @param int $targetWidth Target width for the image
+     * @return int Proportional height
+     */
+    protected function calculateProportionalHeight(int $originalWidth, int $originalHeight, int $targetWidth): int
+    {
+        return (int) round($targetWidth * ($originalHeight / $originalWidth));
+    }
+
+    /**
+     * Calculates the proportional width for an image
+     * 
+     * @param int $originalWidth Original width of the image
+     * @param int $originalHeight Original height of the image
+     * @param int $targetHeight Target height for the image
+     * @return int Proportional width
+     */
+    protected function calculateProportionalWidth(int $originalWidth, int $originalHeight, int $targetHeight): int
+    {
+        return (int) round($targetHeight * ($originalWidth / $originalHeight));
+    }
+    
 
     /**
      * Generates a filename for the image
