@@ -156,6 +156,17 @@ abstract class AbstractAdminObjectModelController extends AbstractAdminControlle
         return $result;
     }
 
+    public function processSave()
+    {
+        $result = parent::processSave();
+        
+        if(method_exists($this->module, 'clearCache')) {
+            call_user_func([$this->module, 'clearCache']);
+        }
+        
+        return $result;
+    }
+
     protected function normalizePositions(): void
     {
         $query = new \DbQuery();
