@@ -312,7 +312,7 @@ abstract class AbstractAdminObjectModelController extends AbstractAdminControlle
         return $this->objectModelImageManager->getThumbnailHtml((int) $this->object->id, $type, $extension, $widthInPx);
     }
 
-    protected function getDeleteImageUrl(string $type): string|false
+    protected function getDeleteImageUrl(string $type): string
     {
         if(!\Validate::isLoadedObject($this->object)) {
             return '';
