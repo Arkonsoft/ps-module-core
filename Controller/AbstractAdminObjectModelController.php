@@ -19,6 +19,8 @@ declare(strict_types=1);
 namespace Arkonsoft\PsModule\Core\Controller;
 
 use Arkonsoft\PsModule\Core\ObjectModel\ObjectModelImageManager;
+use Db;
+use DbQuery;
 
 abstract class AbstractAdminObjectModelController extends AbstractAdminController
 {
@@ -41,7 +43,7 @@ abstract class AbstractAdminObjectModelController extends AbstractAdminControlle
         $this->table = $this->getTable();
         $this->identifier = $this->getIdentifier();
         $this->lang = $this->isMultilang();
-
+        $this->position_identifier = $this->getPositionIdentifier();
         $this->objectModelImageManager = new ObjectModelImageManager(
             $this->module->name,
         );
@@ -73,8 +75,8 @@ abstract class AbstractAdminObjectModelController extends AbstractAdminControlle
     public function prepareList()
     {
         $this->list_id = 'position';
-        $this->position_identifier = 'position';
-        $this->_defaultOrderBy = 'position';
+        $this->position_identifier = $this->getPositionIdentifier();
+        $this->_defaultOrderBy = $this->getPositionIdentifier();
         $this->_defaultOrderWay = 'ASC';
 
         $this->fields_list = $this->getListColumns();
@@ -99,6 +101,11 @@ abstract class AbstractAdminObjectModelController extends AbstractAdminControlle
         $reflection = new \ReflectionClass($this->getObjectModelClassName());
 
         return (string) $reflection->getStaticPropertyValue('definition')['primary'];
+    }
+
+    protected function getPositionIdentifier(): string
+    {
+        return 'position';
     }
 
     protected function isMultilang(): bool
@@ -127,6 +134,72 @@ abstract class AbstractAdminObjectModelController extends AbstractAdminControlle
         $joinType = \Shop::getContext() === \Shop::CONTEXT_SHOP ? 'INNER' : 'LEFT';
 
         $this->_join = $joinType . ' JOIN `' . _DB_PREFIX_ . $this->table . '_shop` shop ON (a.' . $this->identifier . ' = shop.' . $this->identifier . ' AND shop.id_shop = ' . $this->context->shop->id . ')';
+    }
+
+    public function processAdd()
+    {
+        if(empty(\Tools::getValue($this->getPositionIdentifier()))) {
+            $_POST[$this->getPositionIdentifier()] = $this->getNextPosition();
+        }
+
+        return parent::processAdd();
+    }
+
+    public function processDelete()
+    {
+        $result = parent::processDelete();
+        
+        if ($result) {
+            $this->normalizePositions();
+        }
+        
+        return $result;
+    }
+
+    protected function normalizePositions(): void
+    {
+        $query = new \DbQuery();
+        $query->select($this->getIdentifier() . ', ' . $this->getPositionIdentifier())
+            ->from($this->getTable())
+            ->orderBy($this->getPositionIdentifier() . ' ASC');
+
+        $items = \Db::getInstance()->executeS($query);
+        
+        if (!$items) {
+            return;
+        }
+
+        $position = 0;
+        foreach ($items as $item) {
+            $sql = '
+                UPDATE `' . _DB_PREFIX_ . $this->getTable() . '`
+                SET ' . $this->getPositionIdentifier() . ' = ' . (int) $position . '
+                WHERE ' . $this->getIdentifier() . ' = ' . (int) $item[$this->getIdentifier()];
+                
+            \Db::getInstance()->execute($sql);
+            $position++;
+        }
+    }
+
+    protected function getNextPosition(): int
+    {
+        $query = new \DbQuery();
+        $query->select('COUNT(*) as count')
+            ->from($this->getTable());
+
+        $result = \Db::getInstance()->getRow($query);
+        
+        if ((int) $result['count'] === 0) {
+            return 0;
+        }
+
+        $query = new \DbQuery();
+        $query->select('MAX(' . $this->getPositionIdentifier() . ')')
+            ->from($this->getTable());
+            
+        $maxPosition = (int) \Db::getInstance()->getValue($query);
+
+        return $maxPosition + 1;
     }
 
     public function ajaxProcessUpdatePositions()
@@ -174,7 +247,7 @@ abstract class AbstractAdminObjectModelController extends AbstractAdminControlle
     protected function updatePosition(int $way, int $position, int $objectId): bool
     {
         $query = new \DbQuery();
-        $query->select('position, ' . $this->getIdentifier())
+        $query->select($this->getPositionIdentifier() . ', ' . $this->getIdentifier())
             ->from($this->getTable())
             ->where($this->getIdentifier() . ' = ' . (int) $objectId);
 
@@ -184,7 +257,7 @@ abstract class AbstractAdminObjectModelController extends AbstractAdminControlle
             return false;
         }
 
-        $currentPosition = (int) $result['position'];
+        $currentPosition = (int) $result[$this->getPositionIdentifier()];
 
         if ($way === 0) {
             if ($currentPosition === $position) {
@@ -192,36 +265,35 @@ abstract class AbstractAdminObjectModelController extends AbstractAdminControlle
             }
 
             $sql = '
-                UPDATE `' . _DB_PREFIX_ . $this->getTable() . '` 
-                SET position = position + 1
-                WHERE position >= ' . (int) $position . ' 
-                AND position < ' . (int) $currentPosition . ' 
+                UPDATE `' . _DB_PREFIX_ . $this->getTable() . '` l
+                SET ' . $this->getPositionIdentifier() . ' = ' . $this->getPositionIdentifier() . ' + 1
+                WHERE ' . $this->getPositionIdentifier() . ' >= ' . (int) $position . ' 
+                AND ' . $this->getPositionIdentifier() . ' < ' . (int) $currentPosition . ' 
                 AND ' . $this->getIdentifier() . ' != ' . (int) $objectId;
 
             return (bool) \Db::getInstance()->execute($sql) && \Db::getInstance()->execute(
                 '
                 UPDATE `' . _DB_PREFIX_ . $this->getTable() . '`
-                SET position = ' . (int) $position . '
+                SET ' . $this->getPositionIdentifier() . ' = ' . (int) $position . '
                 WHERE ' . $this->getIdentifier() . ' = ' . (int) $objectId
             );
         }
 
         $sql = '
             UPDATE `' . _DB_PREFIX_ . $this->getTable() . '`
-            SET position = position - 1 
-            WHERE position > ' . (int) $currentPosition . '
-            AND position <= ' . (int) $position . '
+            SET ' . $this->getPositionIdentifier() . ' = ' . $this->getPositionIdentifier() . ' - 1 
+            WHERE ' . $this->getPositionIdentifier() . ' > ' . (int) $currentPosition . '
+            AND ' . $this->getPositionIdentifier() . ' <= ' . (int) $position . '
             AND ' . $this->getIdentifier() . ' != ' . (int) $objectId;
 
         return (bool) \Db::getInstance()->execute($sql) && \Db::getInstance()->execute(
             '
                 UPDATE `' . _DB_PREFIX_ . $this->getTable() . '`
-                SET position = ' . (int) $position . '
+                SET ' . $this->getPositionIdentifier() . ' = ' . (int) $position . '
                 WHERE ' . $this->getIdentifier() . ' = ' . (int) $objectId
         );
     }
 
-    
     private function getObjectModelClassNameInSnakeCase(): string
     {
         $reflection = new \ReflectionClass($this->getObjectModelClassName());
@@ -270,5 +342,4 @@ abstract class AbstractAdminObjectModelController extends AbstractAdminControlle
         // Redirect back to the edit page after deletion
         \Tools::redirectAdmin($this->context->link->getAdminLink(\Tools::getValue('controller')) . '&' . $this->identifier . '=' . $id . '&update' . $this->table);
     }
-
 }
