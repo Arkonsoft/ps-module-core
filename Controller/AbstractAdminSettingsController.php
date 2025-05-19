@@ -92,8 +92,8 @@ abstract class AbstractAdminSettingsController extends AbstractAdminController
             if ($language['id_lang'] == $defaultLanguageId) {
                 $language['is_default'] = true;
                 $hasDefault = true;
-            } elseif (isset($language['is_default']) && $language['is_default']) {
-                $hasDefault = true;
+            } else {
+                $language['is_default'] = false;
             }
         }
         
