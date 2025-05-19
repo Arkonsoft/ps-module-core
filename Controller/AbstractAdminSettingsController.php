@@ -163,6 +163,10 @@ abstract class AbstractAdminSettingsController extends AbstractAdminController
             }
 
             foreach ($form['form']['input'] as $field) {
+                if ($field['type'] == 'html') {
+                    continue;
+                }
+                
                 if (empty($field['name']) || empty($field['type'])) {
                     continue;
                 }
