@@ -292,7 +292,7 @@ abstract class AbstractAdminSettingsController extends AbstractAdminController
             return false;
         }
 
-        $values = Tools::getValue($name);
+        $values = (array) Tools::getValue($name);
 
         if (!is_array($values)) {
             $values = [];
