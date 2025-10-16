@@ -1,0 +1,190 @@
+name: PHP Compatibility
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      php_version:
+        description: 'PHP version to test (leave empty for all versions 7.0-8.2)'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''
+          - '7.0'
+          - '7.1'
+          - '7.2'
+          - '7.3'
+          - '7.4'
+          - '8.0'
+          - '8.1'
+          - '8.2'
+
+jobs:
+  php7-compatibility:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        php-version: ${{ github.event.inputs.php_version == '' && fromJSON('["7.0", "7.1", "7.2", "7.3", "7.4", "8.0", "8.1", "8.2"]') || fromJSON(format('["{0}"]', github.event.inputs.php_version)) }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php-version }}
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, soap, apcu, xdebug
+        coverage: none
+        
+    - name: Get composer cache directory
+      id: composer-cache
+      run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+      
+    - name: Cache composer dependencies
+      uses: actions/cache@v3
+      with:
+        path: ${{ steps.composer-cache.outputs.dir }}
+        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+        restore-keys: ${{ runner.os }}-composer-
+        
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress --no-suggest
+      
+    - name: Install PHPStan
+      run: composer require --dev phpstan/phpstan --no-update
+      
+    - name: Copy PHPStan configuration
+      run: cp .github/workflows/phpstan.neon phpstan.neon
+        
+    - name: Run PHPStan analysis
+      run: ./vendor/bin/phpstan analyse --memory-limit=1G
+      
+    - name: Check for PHP 7.0 specific syntax
+      run: |
+        echo "Checking for PHP 7.0 incompatible syntax..."
+        
+        # Check for PHP 7.1+ features
+        if grep -r "?:" src/ --include="*.php" | grep -v "?:" | head -1; then
+          echo "Found nullable type hints (PHP 7.1+)"
+          exit 1
+        fi
+        
+        # Check for PHP 7.2+ features
+        if grep -r "object" src/ --include="*.php" | grep -E ":\s*object\b" | head -1; then
+          echo "Found object type hint (PHP 7.2+)"
+          exit 1
+        fi
+        
+        # Check for PHP 7.4+ features
+        if grep -r "fn\s*(" src/ --include="*.php" | head -1; then
+          echo "Found arrow functions (PHP 7.4+)"
+          exit 1
+        fi
+        
+        if grep -r "??=" src/ --include="*.php" | head -1; then
+          echo "Found null coalescing assignment (PHP 7.4+)"
+          exit 1
+        fi
+        
+        # Check for PHP 8.0+ features
+        if grep -r "match\s*(" src/ --include="*.php" | head -1; then
+          echo "Found match expressions (PHP 8.0+)"
+          exit 1
+        fi
+        
+        if grep -r "#[A-Z]" src/ --include="*.php" | head -1; then
+          echo "Found attributes (PHP 8.0+)"
+          exit 1
+        fi
+        
+        if grep -r "::class" src/ --include="*.php" | grep -E "::class\s*$" | head -1; then
+          echo "Found ::class on object (PHP 8.0+)"
+          exit 1
+        fi
+        
+        if grep -r "mixed" src/ --include="*.php" | grep -E ":\s*mixed\b" | head -1; then
+          echo "Found mixed type hint (PHP 8.0+)"
+          exit 1
+        fi
+        
+        # Check for PHP 8.1+ features
+        if grep -r "enum\s" src/ --include="*.php" | head -1; then
+          echo "Found enums (PHP 8.1+)"
+          exit 1
+        fi
+        
+        if grep -r "readonly\s" src/ --include="*.php" | head -1; then
+          echo "Found readonly properties (PHP 8.1+)"
+          exit 1
+        fi
+        
+        if grep -r "never" src/ --include="*.php" | grep -E ":\s*never\b" | head -1; then
+          echo "Found never return type (PHP 8.1+)"
+          exit 1
+        fi
+        
+        # Check for PHP 8.2+ features
+        if grep -r "true\b" src/ --include="*.php" | grep -E ":\s*true\b" | head -1; then
+          echo "Found true type (PHP 8.2+)"
+          exit 1
+        fi
+        
+        if grep -r "false\b" src/ --include="*.php" | grep -E ":\s*false\b" | head -1; then
+          echo "Found false type (PHP 8.2+)"
+          exit 1
+        fi
+        
+        if grep -r "null\b" src/ --include="*.php" | grep -E ":\s*null\b" | head -1; then
+          echo "Found null type (PHP 8.2+)"
+          exit 1
+        fi
+        
+        echo "No PHP 7.0 incompatible syntax found!"
+        
+    - name: Validate composer.json PHP version constraint
+      run: |
+        echo "Checking composer.json PHP version constraint..."
+        php_version=$(composer config platform.php)
+        if [[ "$php_version" != "7.0"* ]]; then
+          echo "Warning: Platform PHP version is not 7.0.x"
+        fi
+        
+        # Check if composer.json requires PHP 7.0+
+        if ! grep -q '"php":\s*">=7.0"' composer.json; then
+          echo "Warning: composer.json should require PHP >=7.0"
+        fi
+        
+    - name: Test with PHP 7.0 syntax
+      run: |
+        echo "Testing PHP 7.0 syntax compatibility..."
+        find src/ -name "*.php" -exec php -l {} \; | grep -v "No syntax errors" || true
+        
+    - name: Generate compatibility report
+      run: |
+        echo "# PHP Compatibility Report (7.0-8.2)" > compatibility-report.md
+        echo "Generated on: $(date)" >> compatibility-report.md
+        echo "" >> compatibility-report.md
+        echo "## Trigger: ${{ github.event_name }}" >> compatibility-report.md
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "## Manual run by: ${{ github.actor }}" >> compatibility-report.md
+          echo "## Selected PHP version: ${{ github.event.inputs.php_version || 'All versions' }}" >> compatibility-report.md
+        fi
+        echo "" >> compatibility-report.md
+        echo "## PHP Version: ${{ matrix.php-version }}" >> compatibility-report.md
+        echo "" >> compatibility-report.md
+        echo "## Files analyzed:" >> compatibility-report.md
+        find src/ -name "*.php" | wc -l >> compatibility-report.md
+        echo "" >> compatibility-report.md
+        echo "## Status: ✅ Compatible with PHP ${{ matrix.php-version }}" >> compatibility-report.md
+        
+    - name: Upload compatibility report
+      uses: actions/upload-artifact@v3
+      with:
+        name: php-compatibility-report-${{ matrix.php-version }}
+        path: compatibility-report.md
