@@ -1,4 +1,5 @@
 <?php
+
 /**
  * NOTICE OF LICENSE
  * 
@@ -73,8 +74,34 @@ class TabManager implements TabManagerInterface
     {
         $tabId = (int) $this->getIdByControllerClassName($controllerClassName);
 
-        $tab = new \Tab((int) $tabId);
+        if ($tabId === 0) {
+            return true;
+        }
+
+        $tab = new \Tab($tabId);
+
         return (bool) $tab->delete();
+    }
+
+    /**
+     * Uninstall all tabs in reverse install order.
+     * 
+     * @param TabConfiguration[] $tabConfigurations List of tab configurations to uninstall (will be reversed)
+     * @return bool True if all tabs were uninstalled successfully.
+     */
+    public function uninstallTabsInReverseInstallOrder(array $tabConfigurations): bool
+    {
+        $tabsInUninstallOrder = array_reverse($tabConfigurations);
+
+        foreach ($tabsInUninstallOrder as $tab) {
+            if (!$this->uninstallTab(
+                controllerClassName: $tab->getControllerClassName()
+            )) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function getIdByControllerClassName($controllerClassName): int

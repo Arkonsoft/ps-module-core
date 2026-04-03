@@ -38,8 +38,19 @@ interface TabManagerInterface
     public function installTab($controllerClassName, $tabName, $tabParent, $shouldBeVisibleInMenu): bool;
 
     /**
+     * Removes a single admin tab. Returns true if the tab no longer exists after the call (including when it was already absent).
+     *
      * @param string $controllerClassName
      * @return bool
      */
     public function uninstallTab($controllerClassName): bool;
+
+    /**
+     * Removes all given tabs in reverse installation order (deepest / child tabs first, then parents).
+     * Pass the same list and order as for installation.
+     *
+     * @param TabConfiguration[] $tabConfigurations
+     * @return bool False if any single uninstall failed; true when the list is empty or every step succeeded
+     */
+    public function uninstallTabsInReverseInstallOrder(array $tabConfigurations): bool;
 }
