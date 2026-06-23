@@ -26,6 +26,8 @@ on:
 jobs:
   php7-compatibility:
     runs-on: ubuntu-latest
+    env:
+      EXCLUDE_DIR_OPTS: --exclude-dir=vendor --exclude-dir=.github --exclude-dir=.git
     
     strategy:
       matrix:
@@ -54,97 +56,78 @@ jobs:
         restore-keys: ${{ runner.os }}-composer-
         
     - name: Install dependencies
-      run: composer install --prefer-dist --no-progress --no-suggest
-      
-    - name: Install PHPStan
-      run: composer require --dev phpstan/phpstan --no-update
+      run: |
+        if [[ "${{ matrix.php-version }}" == "7.0" || "${{ matrix.php-version }}" == "7.1" ]]; then
+          composer install --prefer-dist --no-progress --no-suggest --no-dev
+        else
+          composer install --prefer-dist --no-progress --no-suggest
+        fi
+
+    - name: Prepare source discovery
+      run: |
+        cat > /tmp/find-source-php.sh <<'EOF'
+        #!/usr/bin/env bash
+        find . -name '*.php' \
+          ! -path './vendor/*' \
+          ! -path './.github/*' \
+          ! -path './.git/*' \
+          "$@"
+        EOF
+        chmod +x /tmp/find-source-php.sh
       
     - name: Copy PHPStan configuration
+      if: ${{ matrix.php-version != '7.0' && matrix.php-version != '7.1' }}
       run: cp .github/workflows/phpstan.neon phpstan.neon
         
     - name: Run PHPStan analysis
+      if: ${{ matrix.php-version != '7.0' && matrix.php-version != '7.1' }}
       run: ./vendor/bin/phpstan analyse --memory-limit=1G
       
     - name: Check for PHP 7.0 specific syntax
       run: |
         echo "Checking for PHP 7.0 incompatible syntax..."
-        
-        # Check for PHP 7.1+ features
-        if grep -r "?:" src/ --include="*.php" | grep -v "?:" | head -1; then
-          echo "Found nullable type hints (PHP 7.1+)"
-          exit 1
-        fi
-        
-        # Check for PHP 7.2+ features
-        if grep -r "object" src/ --include="*.php" | grep -E ":\s*object\b" | head -1; then
-          echo "Found object type hint (PHP 7.2+)"
-          exit 1
-        fi
-        
-        # Check for PHP 7.4+ features
-        if grep -r "fn\s*(" src/ --include="*.php" | head -1; then
-          echo "Found arrow functions (PHP 7.4+)"
-          exit 1
-        fi
-        
-        if grep -r "??=" src/ --include="*.php" | head -1; then
-          echo "Found null coalescing assignment (PHP 7.4+)"
-          exit 1
-        fi
-        
-        # Check for PHP 8.0+ features
-        if grep -r "match\s*(" src/ --include="*.php" | head -1; then
-          echo "Found match expressions (PHP 8.0+)"
-          exit 1
-        fi
-        
-        if grep -r "#[A-Z]" src/ --include="*.php" | head -1; then
-          echo "Found attributes (PHP 8.0+)"
-          exit 1
-        fi
-        
-        if grep -r "::class" src/ --include="*.php" | grep -E "::class\s*$" | head -1; then
-          echo "Found ::class on object (PHP 8.0+)"
-          exit 1
-        fi
-        
-        if grep -r "mixed" src/ --include="*.php" | grep -E ":\s*mixed\b" | head -1; then
-          echo "Found mixed type hint (PHP 8.0+)"
-          exit 1
-        fi
-        
-        # Check for PHP 8.1+ features
-        if grep -r "enum\s" src/ --include="*.php" | head -1; then
-          echo "Found enums (PHP 8.1+)"
-          exit 1
-        fi
-        
-        if grep -r "readonly\s" src/ --include="*.php" | head -1; then
-          echo "Found readonly properties (PHP 8.1+)"
-          exit 1
-        fi
-        
-        if grep -r "never" src/ --include="*.php" | grep -E ":\s*never\b" | head -1; then
-          echo "Found never return type (PHP 8.1+)"
-          exit 1
-        fi
-        
-        # Check for PHP 8.2+ features
-        if grep -r "true\b" src/ --include="*.php" | grep -E ":\s*true\b" | head -1; then
-          echo "Found true type (PHP 8.2+)"
-          exit 1
-        fi
-        
-        if grep -r "false\b" src/ --include="*.php" | grep -E ":\s*false\b" | head -1; then
-          echo "Found false type (PHP 8.2+)"
-          exit 1
-        fi
-        
-        if grep -r "null\b" src/ --include="*.php" | grep -E ":\s*null\b" | head -1; then
-          echo "Found null type (PHP 8.2+)"
-          exit 1
-        fi
-        
+
+        fail_if_found() {
+          local message="$1"
+          shift
+          local match
+          match=$("$@" | grep -vE '^\s*(\*|//)' | grep -v '@' | head -1)
+          if [ -n "$match" ]; then
+            echo "$match"
+            echo "$message"
+            exit 1
+          fi
+        }
+
+        fail_if_found "Found nullable type hints (PHP 7.1+)" \
+          grep -rE '\?(string|int|float|bool|array|callable|iterable|self|static|parent|[A-Z][a-zA-Z0-9_\\]*)' . --include="*.php" $EXCLUDE_DIR_OPTS
+        fail_if_found "Found object type hint (PHP 7.2+)" \
+          grep -rE ':\s*object\b' . --include="*.php" $EXCLUDE_DIR_OPTS
+        fail_if_found "Found arrow functions (PHP 7.4+)" \
+          grep -rE 'fn\s*\(' . --include="*.php" $EXCLUDE_DIR_OPTS
+        fail_if_found "Found null coalescing assignment (PHP 7.4+)" \
+          grep -rF '??=' . --include="*.php" $EXCLUDE_DIR_OPTS
+        fail_if_found "Found match expressions (PHP 8.0+)" \
+          grep -rE 'match\s*\(' . --include="*.php" $EXCLUDE_DIR_OPTS
+        fail_if_found "Found attributes (PHP 8.0+)" \
+          grep -rE '#\[[A-Z]' . --include="*.php" $EXCLUDE_DIR_OPTS
+        fail_if_found "Found ::class on object (PHP 8.0+)" \
+          grep -rE '::class\s*$' . --include="*.php" $EXCLUDE_DIR_OPTS
+        fail_if_found "Found mixed type hint (PHP 8.0+)" \
+          grep -rE ':\s*mixed\b' . --include="*.php" $EXCLUDE_DIR_OPTS
+        fail_if_found "Found enums (PHP 8.1+)" \
+          grep -rE '\benum\s+' . --include="*.php" $EXCLUDE_DIR_OPTS
+        fail_if_found "Found readonly properties (PHP 8.1+)" \
+          grep -rE '\breadonly\s+' . --include="*.php" $EXCLUDE_DIR_OPTS
+        fail_if_found "Found never return type (PHP 8.1+)" \
+          grep -rE ':\s*never\b' . --include="*.php" $EXCLUDE_DIR_OPTS
+        fail_if_found "Found true type (PHP 8.2+)" \
+          grep -rE '\)\s*:\s*true\b|(public|protected|private)\s+true\s+\$|[(,]\s*true\s+\$' . --include="*.php" $EXCLUDE_DIR_OPTS
+        fail_if_found "Found false type (PHP 8.2+)" \
+          grep -rE '\)\s*:\s*false\b|(public|protected|private)\s+false\s+\$|[(,]\s*false\s+\$' . --include="*.php" $EXCLUDE_DIR_OPTS
+        fail_if_found "Found null type (PHP 8.2+)" \
+          grep -rE '\)\s*:\s*null\b|(public|protected|private)\s+null\s+\$|[(,]\s*null\s+\$' . --include="*.php" $EXCLUDE_DIR_OPTS
+
         echo "No PHP 7.0 incompatible syntax found!"
         
     - name: Validate composer.json PHP version constraint
@@ -163,7 +146,7 @@ jobs:
     - name: Test with PHP 7.0 syntax
       run: |
         echo "Testing PHP 7.0 syntax compatibility..."
-        find src/ -name "*.php" -exec php -l {} \; | grep -v "No syntax errors" || true
+        /tmp/find-source-php.sh -exec php -l {} \; | grep -v "No syntax errors" || true
         
     - name: Generate compatibility report
       run: |
@@ -179,7 +162,7 @@ jobs:
         echo "## PHP Version: ${{ matrix.php-version }}" >> compatibility-report.md
         echo "" >> compatibility-report.md
         echo "## Files analyzed:" >> compatibility-report.md
-        find src/ -name "*.php" | wc -l >> compatibility-report.md
+        /tmp/find-source-php.sh | wc -l >> compatibility-report.md
         echo "" >> compatibility-report.md
         echo "## Status: ✅ Compatible with PHP ${{ matrix.php-version }}" >> compatibility-report.md
         

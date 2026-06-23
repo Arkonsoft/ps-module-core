@@ -1,13 +1,13 @@
 parameters:
     level: 0
     paths:
-        - src/
-        - tests/
+        - .
     excludePaths:
         - vendor/
-    checkMissingIterableValueType: false
-    checkGenericClassInNonGenericObjectType: false
+        - .github/
+        - .git/
+    bootstrapFiles:
+        - .github/workflows/phpstan-stubs.php
     ignoreErrors:
         - '#Call to an undefined method#'
         - '#Access to an undefined property#'
-        - '#Class .* not found#'

@@ -17,5 +17,8 @@
         "psr-4": {
             "Arkonsoft\\PsModule\\Core\\": ""
         }
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^1.12"
     }
 }
