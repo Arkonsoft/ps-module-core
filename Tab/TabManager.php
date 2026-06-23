@@ -79,11 +79,6 @@ class TabManager implements TabManagerInterface
 
     public function getIdByControllerClassName($controllerClassName): int
     {
-        /**
-         * @var TabRepository $tabRepository
-         */
-        $tabRepository = $this->module->get('prestashop.core.admin.tab.repository');
-
-        return (int) $tabRepository->findOneIdByClassName($controllerClassName);
+        return (int) \Tab::getIdFromClassName($controllerClassName);
     }
 }
