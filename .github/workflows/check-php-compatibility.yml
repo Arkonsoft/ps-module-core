@@ -133,13 +133,9 @@ jobs:
     - name: Validate composer.json PHP version constraint
       run: |
         echo "Checking composer.json PHP version constraint..."
-        php_version=$(composer config platform.php)
-        if [[ "$php_version" != "7.0"* ]]; then
-          echo "Warning: Platform PHP version is not 7.0.x"
-        fi
-        
-        # Check if composer.json requires PHP 7.0+
-        if ! grep -q '"php":\s*">=7.0"' composer.json; then
+        php_constraint=$(php -r 'echo json_decode(file_get_contents("composer.json"), true)["require"]["php"] ?? "";')
+        echo "Required PHP: $php_constraint"
+        if ! echo "$php_constraint" | grep -qE '^>=[[:space:]]*7\.0'; then
           echo "Warning: composer.json should require PHP >=7.0"
         fi
         
