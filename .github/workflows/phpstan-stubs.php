@@ -189,6 +189,12 @@ class Tab
     {
         return true;
     }
+
+    /** @return int|false */
+    public static function getIdFromClassName($className)
+    {
+       return 0;
+    }
 }
 
 /** @return string */
