@@ -45,7 +45,7 @@ abstract class AbstractAdminObjectModelController extends AbstractAdminControlle
         $this->lang = $this->isMultilang();
         $this->position_identifier = $this->getPositionIdentifier();
         $this->objectModelImageManager = new ObjectModelImageManager(
-            $this->module->name,
+            $this->module->name
         );
 
         $this->setupMultishop();
